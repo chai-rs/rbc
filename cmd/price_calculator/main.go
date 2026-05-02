@@ -16,10 +16,14 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+type Config struct {
+	order.PriceRules
+}
+
 func main() {
 	// Load pricing rules from the environment. MustProcess panics on bad input,
 	// which is the desired behaviour for a misconfigured deploy.
-	var cfg order.PriceRules
+	var cfg Config
 	envconfig.MustProcess("", &cfg)
 
 	// Build each rule. Order matters in NewCalculator below — taxes first,
@@ -30,6 +34,7 @@ func main() {
 	roundPriceRule := must(order.NewRoundPriceRule(cfg.RoundPrecision))
 
 	calculator := order.NewCalculator(
+		order.DefaultZeroPriceAction,
 		taxPriceRule,
 		firstOrderDiscountPriceRule,
 		customerDiscountPriceRule,

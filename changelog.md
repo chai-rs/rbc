@@ -5,3 +5,4 @@
 - [2026/05/03 17:50:00][PART-1]: Add integration tests for `Calculator` + `PriceRule` chain
 - [2026/05/03 18:30:00][PART-1]: Add documentation for the CLI, configuration, rule chain order, and tests in the README and part-1.md files.
 - [2026/05/03 19:00:00][PART-2]: Initial commit for part 2, added code review and refactoring notes in part-2.md.
+- [2026/05/03 19:30:00][PART-3]: Move integration tests to unit tests.

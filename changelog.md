@@ -3,3 +3,4 @@
 - [2026/05/03 15:20:00][PART-1]: Fix `FirstOrderDiscountPriceRule` discount unit bug and switch the formula from `price * discount` to `price - (price * discount)` for clearer DX/UX.
 - [2026/05/03 15:30:00][PART-1]: Add the unittest for implemented `PriceRule`
 - [2026/05/03 17:50:00][PART-1]: Add integration tests for `Calculator` + `PriceRule` chain
+- [2026/05/03 18:30:00][PART-1]: Add documentation for the CLI, configuration, rule chain order, and tests in the README and part-1.md files.

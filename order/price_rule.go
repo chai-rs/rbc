@@ -75,16 +75,16 @@ func (r *TaxPriceRule) Apply(order *Order, currentPrice decimal.Decimal) (decima
 // FirstOrderDiscountPriceRule applies a percentage discount on the first order.
 // Discount is interpreted as a fraction (e.g. 0.10 = 10% off).
 type FirstOrderDiscountPriceRule struct {
-	Discount decimal.Decimal
+	DiscountPercent decimal.Decimal
 }
 
 // NewFirstOrderDiscountPriceRule rejects negative discount values.
 func NewFirstOrderDiscountPriceRule(discount decimal.Decimal) (*FirstOrderDiscountPriceRule, error) {
-	if discount.LessThan(decimal.Zero) {
-		return nil, fmt.Errorf("discount cannot be negative: %s", discount)
+	if discount.LessThan(decimal.Zero) || discount.GreaterThan(decimal.NewFromInt(1)) {
+		return nil, fmt.Errorf("invalid first order discount: %s, the value must be between 0 and 1", discount)
 	}
 
-	return &FirstOrderDiscountPriceRule{Discount: discount}, nil
+	return &FirstOrderDiscountPriceRule{DiscountPercent: discount}, nil
 }
 
 // Apply discounts currentPrice when order.IsFirstOrder is true; otherwise it
@@ -94,7 +94,7 @@ func (r *FirstOrderDiscountPriceRule) Apply(order *Order, currentPrice decimal.D
 		return currentPrice, nil
 	}
 
-	return currentPrice.Sub(currentPrice.Mul(r.Discount)), nil
+	return currentPrice.Sub(currentPrice.Mul(r.DiscountPercent)), nil
 }
 
 // CustomerDiscountPriceRule subtracts a flat per-tier discount from the price.

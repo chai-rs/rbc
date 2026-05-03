@@ -29,7 +29,7 @@ var (
 // when the corresponding env var is unset.
 type PriceRules struct {
 	Taxes              map[string]decimal.Decimal       `default:"TH:0.07,FR:0.20"`
-	FirstOrderDiscount decimal.Decimal                  `split_words:"true" default:"100"`
+	FirstOrderDiscount decimal.Decimal                  `split_words:"true" default:"0.1"`
 	CustomerDiscounts  map[CustomerType]decimal.Decimal `split_words:"true" default:"regular:0,vip:100"`
 	RoundPrecision     int                              `split_words:"true" default:"2"`
 }

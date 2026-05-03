@@ -10,3 +10,4 @@
 | 4   | [Part 4: External Payment API](docs/part-4.md)    | Payment provider boundary, idempotency, persisted payment attempts, and fake-provider tests. |
 | 5   | [Part 5: Production Incident](docs/part-5.md)     | Handling a production incident: identifying affected orders, fixing issues, and preventing recurrence. |
 | 6   | [Part 6: Scaling the Design](docs/part-6.md)      | Scaling the pricing design with configuration, database-backed rules, and targeted `PriceRule` additions. |
+| 7   | [Part 7: Code Styles and Trade-offs](docs/part-7.md) | Code structure, OOP and functional style, Chain of Responsibility, and scaling trade-offs. |

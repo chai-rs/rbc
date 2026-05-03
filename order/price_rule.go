@@ -29,6 +29,7 @@ var (
 // when the corresponding env var is unset.
 type PriceRules struct {
 	Taxes              map[string]decimal.Decimal       `default:"TH:0.07,FR:0.20"`
+	DefaultTaxRate     decimal.Decimal                  `split_words:"true" default:"0.2"`
 	FirstOrderDiscount decimal.Decimal                  `split_words:"true" default:"0.1"`
 	CustomerDiscounts  map[CustomerType]decimal.Decimal `split_words:"true" default:"regular:0,vip:100"`
 	RoundPrecision     int                              `split_words:"true" default:"2"`
@@ -41,13 +42,17 @@ type PriceRule interface {
 }
 
 // TaxPriceRule applies a country-specific multiplicative tax: price * (1 + rate).
+// When DefaultRate is non-nil, it is used as a fallback for countries missing
+// from Taxes; otherwise unknown countries cause Apply to error.
 type TaxPriceRule struct {
-	Taxes map[string]decimal.Decimal
+	Taxes       map[string]decimal.Decimal
+	DefaultRate decimal.Decimal
 }
 
 // NewTaxPriceRule validates that every key is an ISO-3166-1 alpha-2 code and
-// every rate is in [0, 1].
-func NewTaxPriceRule(taxes map[string]decimal.Decimal) (*TaxPriceRule, error) {
+// every rate (including defaultRate when non-nil) is in [0, 1]. Pass a nil
+// defaultRate to keep strict mode where unknown countries error.
+func NewTaxPriceRule(taxes map[string]decimal.Decimal, defaultRate decimal.Decimal) (*TaxPriceRule, error) {
 	for code, rate := range taxes {
 		if err := v.Validate(code, is.CountryCode2); err != nil {
 			return nil, fmt.Errorf("invalid country code: %s", code)
@@ -58,15 +63,24 @@ func NewTaxPriceRule(taxes map[string]decimal.Decimal) (*TaxPriceRule, error) {
 		}
 	}
 
-	return &TaxPriceRule{Taxes: taxes}, nil
+	if defaultRate.GreaterThan(decimal.NewFromInt(1)) {
+		return nil, fmt.Errorf("invalid default tax rate: %s", defaultRate)
+	}
+
+	return &TaxPriceRule{Taxes: taxes, DefaultRate: defaultRate}, nil
 }
 
 // Apply returns currentPrice grossed up by the tax rate for the order's
-// country. It errors when the country has no configured rate.
+// country. It falls back to DefaultRate when the country is missing; it errors
+// only when both the country and DefaultRate are absent.
 func (r *TaxPriceRule) Apply(order *Order, currentPrice decimal.Decimal) (decimal.Decimal, error) {
 	taxRate, ok := r.Taxes[order.CountryCode()]
 	if !ok {
-		return decimal.Zero, fmt.Errorf("tax is not supported for country: %s", order.CountryCode())
+		if r.DefaultRate.IsNegative() {
+			return decimal.Zero, fmt.Errorf("tax is not supported for country: %s", order.CountryCode())
+		}
+
+		taxRate = r.DefaultRate
 	}
 
 	return currentPrice.Add(currentPrice.Mul(taxRate)), nil

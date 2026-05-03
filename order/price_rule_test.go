@@ -31,9 +31,13 @@ func TestPriceRule_TaxPriceRule(t *testing.T) {
 		CustomerType: CustomerTypeRegular,
 	})
 
+	defaultRate := decimal.NewFromFloat(0.10)
+	noDefault := decimal.NewFromInt(-1)
+
 	type input struct {
-		order *Order
-		taxes map[string]decimal.Decimal
+		order       *Order
+		taxes       map[string]decimal.Decimal
+		defaultRate decimal.Decimal
 	}
 
 	tests := []struct {
@@ -57,27 +61,51 @@ func TestPriceRule_TaxPriceRule(t *testing.T) {
 		},
 		{
 			name:         "zero price stays zero",
-			in:           input{order: thOrder, taxes: taxes},
+			in:           input{order: thOrder, taxes: taxes, defaultRate: noDefault},
 			currentPrice: decimal.Zero,
 			want:         decimal.Zero,
 		},
 		{
-			name:         "unsupported country returns error",
-			in:           input{order: usOrder, taxes: taxes},
+			name:         "negative default disables fallback",
+			in:           input{order: usOrder, taxes: taxes, defaultRate: noDefault},
 			currentPrice: decimal.NewFromInt(100),
 			wantErr:      true,
 		},
 		{
-			name:         "empty tax map returns error",
-			in:           input{order: thOrder, taxes: map[string]decimal.Decimal{}},
+			name:         "empty tax map with negative default errors",
+			in:           input{order: thOrder, taxes: map[string]decimal.Decimal{}, defaultRate: noDefault},
 			currentPrice: decimal.NewFromInt(100),
 			wantErr:      true,
+		},
+		{
+			name:         "default rate fills in for unknown country",
+			in:           input{order: usOrder, taxes: taxes, defaultRate: defaultRate},
+			currentPrice: decimal.NewFromInt(100),
+			want:         decimal.NewFromInt(110),
+		},
+		{
+			name:         "default rate ignored when country present",
+			in:           input{order: thOrder, taxes: taxes, defaultRate: defaultRate},
+			currentPrice: decimal.NewFromInt(100),
+			want:         decimal.NewFromInt(107),
+		},
+		{
+			name:         "default rate with empty map",
+			in:           input{order: usOrder, taxes: map[string]decimal.Decimal{}, defaultRate: defaultRate},
+			currentPrice: decimal.NewFromInt(200),
+			want:         decimal.NewFromInt(220),
+		},
+		{
+			name:         "zero default rate applies 0% tax",
+			in:           input{order: usOrder, taxes: taxes, defaultRate: decimal.Zero},
+			currentPrice: decimal.NewFromInt(100),
+			want:         decimal.NewFromInt(100),
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			rule, err := NewTaxPriceRule(tc.in.taxes)
+			rule, err := NewTaxPriceRule(tc.in.taxes, tc.in.defaultRate)
 			require.NoError(t, err)
 
 			got, err := rule.Apply(tc.in.order, tc.currentPrice)
@@ -94,9 +122,10 @@ func TestPriceRule_TaxPriceRule(t *testing.T) {
 
 func TestPriceRule_NewTaxPriceRule(t *testing.T) {
 	tests := []struct {
-		name    string
-		taxes   map[string]decimal.Decimal
-		wantErr bool
+		name        string
+		taxes       map[string]decimal.Decimal
+		defaultRate decimal.Decimal
+		wantErr     bool
 	}{
 		{
 			name: "valid map",
@@ -104,35 +133,67 @@ func TestPriceRule_NewTaxPriceRule(t *testing.T) {
 				"TH": decimal.NewFromFloat(0.07),
 				"FR": decimal.NewFromFloat(0.20),
 			},
+			defaultRate: decimal.NewFromInt(-1),
 		},
 		{
-			name:  "empty map",
-			taxes: map[string]decimal.Decimal{},
+			name:        "empty map",
+			taxes:       map[string]decimal.Decimal{},
+			defaultRate: decimal.NewFromInt(-1),
 		},
 		{
-			name:  "rate at upper bound",
-			taxes: map[string]decimal.Decimal{"TH": decimal.NewFromInt(1)},
+			name:        "rate at upper bound",
+			taxes:       map[string]decimal.Decimal{"TH": decimal.NewFromInt(1)},
+			defaultRate: decimal.NewFromInt(-1),
 		},
 		{
-			name:    "invalid country code",
-			taxes:   map[string]decimal.Decimal{"XX": decimal.NewFromFloat(0.07)},
-			wantErr: true,
+			name:        "invalid country code",
+			taxes:       map[string]decimal.Decimal{"XX": decimal.NewFromFloat(0.07)},
+			defaultRate: decimal.NewFromInt(-1),
+			wantErr:     true,
 		},
 		{
-			name:    "negative rate",
-			taxes:   map[string]decimal.Decimal{"TH": decimal.NewFromFloat(-0.01)},
-			wantErr: true,
+			name:        "negative rate",
+			taxes:       map[string]decimal.Decimal{"TH": decimal.NewFromFloat(-0.01)},
+			defaultRate: decimal.NewFromInt(-1),
+			wantErr:     true,
 		},
 		{
-			name:    "rate above 1",
-			taxes:   map[string]decimal.Decimal{"TH": decimal.NewFromFloat(1.01)},
-			wantErr: true,
+			name:        "rate above 1",
+			taxes:       map[string]decimal.Decimal{"TH": decimal.NewFromFloat(1.01)},
+			defaultRate: decimal.NewFromInt(-1),
+			wantErr:     true,
+		},
+		{
+			name:        "valid default rate",
+			taxes:       map[string]decimal.Decimal{"TH": decimal.NewFromFloat(0.07)},
+			defaultRate: decimal.NewFromFloat(0.05),
+		},
+		{
+			name:        "negative default rate disables fallback",
+			taxes:       map[string]decimal.Decimal{},
+			defaultRate: decimal.NewFromFloat(-0.01),
+		},
+		{
+			name:        "very negative default rate accepted as sentinel",
+			taxes:       map[string]decimal.Decimal{},
+			defaultRate: decimal.NewFromInt(-100),
+		},
+		{
+			name:        "default rate at upper bound",
+			taxes:       map[string]decimal.Decimal{},
+			defaultRate: decimal.NewFromInt(1),
+		},
+		{
+			name:        "default rate above 1",
+			taxes:       map[string]decimal.Decimal{},
+			defaultRate: decimal.NewFromFloat(1.01),
+			wantErr:     true,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			rule, err := NewTaxPriceRule(tc.taxes)
+			rule, err := NewTaxPriceRule(tc.taxes, tc.defaultRate)
 			if tc.wantErr {
 				require.Error(t, err)
 				require.Nil(t, rule)

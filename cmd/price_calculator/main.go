@@ -28,7 +28,7 @@ func main() {
 
 	// Build each rule. Order matters in NewCalculator below — taxes first,
 	// discounts next, rounding last so it doesn't get partially undone.
-	taxPriceRule := must(order.NewTaxPriceRule(cfg.Taxes))
+	taxPriceRule := must(order.NewTaxPriceRule(cfg.Taxes, cfg.DefaultTaxRate))
 	firstOrderDiscountPriceRule := must(order.NewFirstOrderDiscountPriceRule(cfg.FirstOrderDiscount))
 	customerDiscountPriceRule := must(order.NewCustomerDiscountPriceRule(cfg.CustomerDiscounts))
 	roundPriceRule := must(order.NewRoundPriceRule(cfg.RoundPrecision))

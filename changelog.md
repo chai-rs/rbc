@@ -11,3 +11,4 @@
 - [2026/05/03 22:40:00][PART-5]: Initial commit for part 5, added notes on handling a production incident in part-5.md.
 - [2026/05/03 23:10:38][PART-6]: Initial commit for part 6, added notes on scaling the pricing design in part-6.md.
 - [2026/05/04 00:16:25][PART-7]: Initial commit for part 7, added notes on code style, trade-offs, and pricing rule evolution in part-7.md.
+- [2026/05/04 01:50:20][PART-8]: Initial commit for part 8, added notes on AI usage, verification, limitations, and workflow improvements in part-8.md.
